@@ -2,26 +2,27 @@ import streamlit as st
 import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from webdriver_manager.firefox import GeckoDriverManager
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 import base64
+
+@st.experimental_singleton
+def get_driver():
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+options = Options()
+options.add_argument('--disable-gpu')
+options.add_argument('--headless')
 
 # Function to perform web scraping
 def scrape_data(search_term):
     base_url = "https://www.indiegogo.com"
     url = f"https://www.indiegogo.com/explore/health-fitness?project_timing=all&product_stage=all&sort=trending&q={search_term}"
 
-    # Firefox options
-    firefox_options = FirefoxOptions()
-    firefox_options.add_argument("--headless")
-
-    # Firefox WebDriver Service
-    service = FirefoxService(executable_path=GeckoDriverManager().install())
-
-    # WebDriver with Firefox
-    driver = webdriver.Firefox(options=firefox_options, service=service)
+    # WebDriver
+    driver = get_driver()
 
     try:
         driver.get(url)
