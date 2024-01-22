@@ -2,27 +2,26 @@ import streamlit as st
 import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
 import time
 import base64
-
-@st.experimental_singleton
-def get_driver():
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-options = Options()
-options.add_argument('--disable-gpu')
-options.add_argument('--headless')
 
 # Function to perform web scraping
 def scrape_data(search_term):
     base_url = "https://www.indiegogo.com"
     url = f"https://www.indiegogo.com/explore/health-fitness?project_timing=all&product_stage=all&sort=trending&q={search_term}"
 
-    # WebDriver
-    driver = get_driver()
+    # Firefox options
+    firefoxOptions = Options()
+    firefoxOptions.add_argument("--headless")
+    service = Service(GeckoDriverManager().install())
+    driver = webdriver.Firefox(
+        options=firefoxOptions,
+        service=service,
+    )
+    
 
     try:
         driver.get(url)
@@ -89,29 +88,31 @@ def get_table_download_link(df):
     href = f'<a href="data:file/csv;base64,{b64}" download="indiegogo_projects.csv">Download csv file</a>'
     return href
 
+# Function to update the session state
+def update_session_state(new_data):
+    st.session_state['data'] = new_data
+
 ##############################################################################
 
-# Streamlit UI Components
+
 st.set_page_config(layout="wide")
-st.title("Indiegogo Project Scraper")
+st.title("Indiegogo Project Scraper using Firefox")
 
-# Input for search term
 search_term = st.text_input("Enter search term:", "sports")
-
-# Initialize session state
-if 'data' not in st.session_state:
-    st.session_state['data'] = pd.DataFrame()
 
 # Button to start scraping
 if st.button("Scrape Data"):
     with st.spinner('Scraping data...'):
-        st.session_state['data'] = scrape_data(search_term)
+        # Scrape data
+        scraped_data = scrape_data(search_term)
         st.success('Scraping completed!')
 
-# Display data
-st.dataframe(st.session_state['data'])
+        # Display data
+        if not scraped_data.empty:
+            st.dataframe(scraped_data)
+        else:
+            st.write("No data to display.")
 
-# Button to download CSV
-if st.button('Export as CSV') and not st.session_state['data'].empty:
-    tmp_download_link = get_table_download_link(st.session_state['data'])
-    st.markdown(tmp_download_link, unsafe_allow_html=True)
+        # Button to download CSV
+        tmp_download_link = get_table_download_link(scraped_data)
+        st.markdown(tmp_download_link, unsafe_allow_html=True)
